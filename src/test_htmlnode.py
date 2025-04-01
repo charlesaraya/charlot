@@ -19,5 +19,21 @@ class TestHTMLNode(unittest.TestCase):
         self.assertEqual(h1_node.props_to_html(), '')
         self.assertIn(p_node, body_node.children)
 
+class TestLeafNode(unittest.TestCase):
+    def test_leaf(self):
+        link_props = {
+            "href": "https://www.example.com",
+            "target": "_blank"
+        }
+        p_node = LeafNode("p", "This is a paragraph of text.")
+        raw_node = LeafNode(None, "This is a paragraph of text.")
+        no_child_node = LeafNode(None, "This is a paragraph of text.", [p_node])
+        link_node = LeafNode(tag="a", value="Click bait!", props=link_props) 
+
+        self.assertEqual(p_node.to_html(), '<p>This is a paragraph of text.</p>')
+        self.assertEqual(raw_node.to_html(), 'This is a paragraph of text.')
+        self.assertEqual(no_child_node.children, None)
+        self.assertEqual(link_node.props_to_html(), ' href="https://www.example.com" target="_blank"')
+
 if __name__ == '__main__':
     unittest.main()

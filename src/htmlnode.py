@@ -15,3 +15,15 @@ class HTMLNode:
         if self.props:
             return ''.join(list(map(lambda key: f' {key}="{self.props[key]}"', self.props)))
         return ''
+
+class LeafNode(HTMLNode):
+    def __init__(self, tag, value, props=None):
+        super().__init__(tag, value, None, props)
+
+    def to_html(self):
+        if not self.value:
+            raise ValueError("A leaf node must have a value")
+
+        if not self.tag:
+            return self.value
+        return f"<{self.tag}>{self.value}</{self.tag}>"
