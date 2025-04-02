@@ -9,6 +9,7 @@ from textnode import (
     extract_markdown_links,
     split_nodes_image,
     split_nodes_link,
+    text_to_textnodes
 )
 
 class TestTextNode(unittest.TestCase):
@@ -78,8 +79,8 @@ class TestTextNode(unittest.TestCase):
         self.assertListEqual(matches, expected_result)
 
     def test_split_nodes_image(self):
-        self.assertEqual(split_nodes_link([TestTextNode.empty_node]), [])
-        self.assertEqual(split_nodes_link([TestTextNode.normal_node]), [])
+        self.assertEqual(split_nodes_link([TestTextNode.empty_node]), [TestTextNode.empty_node])
+        self.assertEqual(split_nodes_link([TestTextNode.normal_node]), [TestTextNode.normal_node])
 
         start_text = TextNode("Check ", TextType.NORMAL)
         image1 = TextNode("rick roll", TextType.IMAGE, "https://i.imgur.com/aKaOqIh.gif")
@@ -100,8 +101,8 @@ class TestTextNode(unittest.TestCase):
         self.assertListEqual(split_nodes_image([end_image_node]), expected_result)
 
     def test_split_nodes_link(self):
-        self.assertEqual(split_nodes_link([TestTextNode.empty_node]), [])
-        self.assertEqual(split_nodes_link([TestTextNode.normal_node]), [])
+        self.assertEqual(split_nodes_link([TestTextNode.empty_node]), [TestTextNode.empty_node])
+        self.assertEqual(split_nodes_link([TestTextNode.normal_node]), [TestTextNode.normal_node])
 
         start_text = TextNode("This is text with a link ", TextType.NORMAL)
         link1 = TextNode("to boot dev", TextType.LINK, "https://www.boot.dev")
@@ -120,6 +121,26 @@ class TestTextNode(unittest.TestCase):
         end_link_node = TextNode("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)", TextType.NORMAL)
         expected_result = [start_text, link1, mid_text, link2]
         self.assertListEqual(split_nodes_link([end_link_node]), expected_result)
+
+    def test_text_to_textnodes(self):
+        text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and **specially** a [link](https://boot.dev). Clear!"
+        expected_result = [
+            TextNode("This is ", TextType.NORMAL),
+            TextNode("text", TextType.BOLD),
+            TextNode(" with an ", TextType.NORMAL),
+            TextNode("italic", TextType.ITALIC),
+            TextNode(" word and a ", TextType.NORMAL),
+            TextNode("code block", TextType.CODE),
+            TextNode(" and an ", TextType.NORMAL),
+            TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"),
+            TextNode(" and ", TextType.NORMAL),
+            TextNode("specially", TextType.BOLD),
+            TextNode(" a ", TextType.NORMAL),
+            TextNode("link", TextType.LINK, "https://boot.dev"),
+            TextNode(". Clear!", TextType.NORMAL)
+        ]
+        self.assertListEqual(text_to_textnodes(text), expected_result)
+
 
 if __name__ == '__main__':
     unittest.main()

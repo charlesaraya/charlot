@@ -56,7 +56,8 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
         else:
             text_split = node.text.split(delimiter)
             if len(text_split) in [1, 2]:
-                raise ValueError(f"Delimiter/s {delimiter} not found")
+                new_nodes.append(node)
+                continue
             for idx, text in enumerate(text_split):
                 if (idx+1) % 2 != 0:
                     new_nodes.append(TextNode(text, TextType.NORMAL))
@@ -69,16 +70,19 @@ def split_nodes_image(old_nodes):
     for node in old_nodes:
         matches = extract_markdown_images(node.text)
         text = node.text
-        for match in matches:
-            alt_text, url = match
-            delimiter = f"![{alt_text}]({url})"
-            text = text.partition(delimiter)
-            if text[0]:
-                new_nodes.append(TextNode(text[0], TextType.NORMAL))
-            new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
-            text = text[2]
-        if text and matches:
-            new_nodes.append(TextNode(text, TextType.NORMAL))
+        if matches:
+            for match in matches:
+                alt_text, url = match
+                delimiter = f"![{alt_text}]({url})"
+                text = text.partition(delimiter)
+                if text[0]:
+                    new_nodes.append(TextNode(text[0], TextType.NORMAL))
+                new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
+                text = text[2]
+            if text:
+                new_nodes.append(TextNode(text, TextType.NORMAL))
+        else:
+            new_nodes.append(node)
     return new_nodes
 
 def split_nodes_link(old_nodes):
@@ -86,19 +90,36 @@ def split_nodes_link(old_nodes):
     for node in old_nodes:
         matches = extract_markdown_links(node.text)
         text = node.text
-        for match in matches:
-            alt_text, url = match
-            delimiter = f"[{alt_text}]({url})"
-            text = text.partition(delimiter)
-            if text[0]:
-                new_nodes.append(TextNode(text[0], TextType.NORMAL))
-            new_nodes.append(TextNode(alt_text, TextType.LINK, url))
-            text = text[2]
-        if text and matches:
-            new_nodes.append(TextNode(text, TextType.NORMAL))
+        if matches:
+            for match in matches:
+                alt_text, url = match
+                delimiter = f"[{alt_text}]({url})"
+                text = text.partition(delimiter)
+                if text[0]:
+                    new_nodes.append(TextNode(text[0], TextType.NORMAL))
+                new_nodes.append(TextNode(alt_text, TextType.LINK, url))
+                text = text[2]
+            if text:
+                new_nodes.append(TextNode(text, TextType.NORMAL))
+        else:
+            new_nodes.append(node)
     return new_nodes
 
-URL_PATTERN = r"\[(\w+(?:\s*\w*)*)\]\((http(?:s)?:\/\/[\w]+\.[\S]+\.\w+(?:[A-Za-z0-9-\._~!\$&'\*\+,;=:@\/\?])*)\)"
+def text_to_textnodes(text):
+    initial_node = TextNode(text, TextType.NORMAL)
+    delimiters_types = [("**", TextType.BOLD), ("_", TextType.ITALIC), ("`", TextType.CODE)]
+    old_nodes = [initial_node]
+    for delimiter, text_type in delimiters_types:
+        try:
+            old_nodes = split_nodes_delimiter(old_nodes, delimiter, text_type)
+        except ValueError as e:
+            print(f"Error {e}")
+            continue
+    new_nodes = split_nodes_image(old_nodes)
+    new_nodes = split_nodes_link(new_nodes)
+    return new_nodes
+
+URL_PATTERN = r"\[(\w+(?:\s*\w*)*)\]\((http(?:s)?:\/\/(?:[\w]+\.)*[\S]+\.\w+(?:[A-Za-z0-9-\._~!\$&'\*\+,;=:@\/\?])*)\)"
 
 def extract_markdown_images(text):
     matches = re.findall(r"!"+URL_PATTERN, text)
@@ -109,6 +130,6 @@ def extract_markdown_links(text):
     return matches
 
 if __name__ == '__main__':
-    text_with_links = TextNode("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)", TextType.NORMAL)
-    new_nodes = split_nodes_link([text_with_links])
+    text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and **specially** a [link](https://boot.dev). Clear!"
+    new_nodes = text_to_textnodes(text)
     print(new_nodes)
