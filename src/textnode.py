@@ -64,7 +64,41 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     new_nodes.append(TextNode(text, text_type))
     return new_nodes
 
-URL_PATTERN = r"\[(\w+(?:\s*\w*)*)\]\((http(?:s)?:\/\/[\w]+\.[\S]+\.\w+(?:[A-Za-z0-9-\._~!\$&'\(\)\*\+,;=:@\/\?])*)"
+def split_nodes_image(old_nodes):
+    new_nodes =[]
+    for node in old_nodes:
+        matches = extract_markdown_images(node.text)
+        text = node.text
+        for match in matches:
+            alt_text, url = match
+            delimiter = f"![{alt_text}]({url})"
+            text = text.partition(delimiter)
+            if text[0]:
+                new_nodes.append(TextNode(text[0], TextType.NORMAL))
+            new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
+            text = text[2]
+        if text:
+            new_nodes.append(TextNode(text, TextType.NORMAL))
+    return new_nodes
+
+def split_nodes_link(old_nodes):
+    new_nodes =[]
+    for node in old_nodes:
+        matches = extract_markdown_links(node.text)
+        text = node.text
+        for match in matches:
+            alt_text, url = match
+            delimiter = f"![{alt_text}]({url})"
+            text = text.partition(delimiter)
+            if text[0]:
+                new_nodes.append(TextNode(text[0], TextType.NORMAL))
+            new_nodes.append(TextNode(alt_text, TextType.LINK, url))
+            text = text[2]
+        if text:
+            new_nodes.append(TextNode(text, TextType.NORMAL))
+    return new_nodes
+
+URL_PATTERN = r"\[(\w+(?:\s*\w*)*)\]\((http(?:s)?:\/\/[\w]+\.[\S]+\.\w+(?:[A-Za-z0-9-\._~!\$&'\*\+,;=:@\/\?])*)\)"
 
 def extract_markdown_images(text):
     matches = re.findall(r"!"+URL_PATTERN, text)
@@ -75,9 +109,7 @@ def extract_markdown_links(text):
     return matches
 
 if __name__ == '__main__':
-    text_with_images = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
-    text_with_links = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
-    matches = extract_markdown_images(text_with_images)
-    print(matches)
-    matches = extract_markdown_links(text_with_links)
-    print(matches)
+    text_node_with_images = TextNode("![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg) the end", TextType.NORMAL)
+    #text_with_links = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
+    new_nodes = split_nodes_image([text_node_with_images])
+    print(new_nodes)

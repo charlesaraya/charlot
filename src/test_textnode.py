@@ -1,6 +1,14 @@
 import unittest
 
-from textnode import TextNode, TextType, text_node_to_html_node, split_nodes_delimiter, extract_markdown_images, extract_markdown_links
+from textnode import (
+    TextNode,
+    TextType,
+    text_node_to_html_node,
+    split_nodes_delimiter,
+    extract_markdown_images,
+    extract_markdown_links,
+    split_nodes_image
+)
 
 class TestTextNode(unittest.TestCase):
     normal_node = TextNode("This is a text node", TextType.NORMAL)
@@ -57,15 +65,34 @@ class TestTextNode(unittest.TestCase):
 
     def test_extract_markdown_images(self):
         text_with_images = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
-        result = [('rick roll', 'https://i.imgur.com/aKaOqIh.gif)'), ('obi wan', 'https://i.imgur.com/fJRm4Vk.jpeg)')]
+        expected_result = [('rick roll', 'https://i.imgur.com/aKaOqIh.gif'), ('obi wan', 'https://i.imgur.com/fJRm4Vk.jpeg')]
         matches = extract_markdown_images(text_with_images)
-        self.assertListEqual(result, matches)
+        self.assertListEqual(matches, expected_result)
 
     def test_extract_markdown_links(self):
         text_with_links = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
-        result = [('to boot dev', 'https://www.boot.dev)'), ('to youtube', 'https://www.youtube.com/@bootdotdev)')]
+        expected_result = [('to boot dev', 'https://www.boot.dev'), ('to youtube', 'https://www.youtube.com/@bootdotdev')]
         matches = extract_markdown_links(text_with_links)
-        self.assertListEqual(result, matches)
+        self.assertListEqual(matches, expected_result)
+
+    def test_split_nodes_image(self):
+        start_text = TextNode("Check ", TextType.NORMAL)
+        image1 = TextNode("rick roll", TextType.IMAGE, "https://i.imgur.com/aKaOqIh.gif")
+        mid_text = TextNode(" and ", TextType.NORMAL)
+        image2 = TextNode("obi wan", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg")
+        end_text = TextNode(" and enjoy", TextType.NORMAL)
+
+        between_text_node = TextNode("Check ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg) and enjoy", TextType.NORMAL)
+        expected_result = [start_text, image1, mid_text, image2, end_text]
+        self.assertListEqual(split_nodes_image([between_text_node]), expected_result)
+
+        start_image_node = TextNode("![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg) and enjoy", TextType.NORMAL)
+        expected_result = [image1, mid_text, image2, end_text]
+        self.assertListEqual(split_nodes_image([start_image_node]), expected_result)
+
+        end_image_node = TextNode("Check ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)", TextType.NORMAL)
+        expected_result = [start_text, image1, mid_text, image2]
+        self.assertListEqual(split_nodes_image([end_image_node]), expected_result)
 
 if __name__ == '__main__':
     unittest.main()
