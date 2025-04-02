@@ -1,4 +1,5 @@
 from enum import Enum
+import re
 
 from htmlnode import LeafNode
 
@@ -63,11 +64,20 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     new_nodes.append(TextNode(text, text_type))
     return new_nodes
 
+URL_PATTERN = r"\[(\w+(?:\s*\w*)*)\]\((http(?:s)?:\/\/[\w]+\.[\S]+\.\w+(?:[A-Za-z0-9-\._~!\$&'\(\)\*\+,;=:@\/\?])*)"
+
+def extract_markdown_images(text):
+    matches = re.findall(r"!"+URL_PATTERN, text)
+    return matches
+
+def extract_markdown_links(text):
+    matches = re.findall(URL_PATTERN, text)
+    return matches
+
 if __name__ == '__main__':
-    bold_node = TextNode("**important notice**", TextType.BOLD)
-    link_node = TextNode("[link](https://www.example.com)", TextType.LINK)
-    img_node = TextNode("![alt text for image](url/of/image.jpg)", TextType.IMAGE)
-    bold_node_1 = TextNode("This is **text** with a `code block` word", TextType.NORMAL)
-    bold_node_2 = TextNode("And this is more **important** with a **bold text** word", TextType.NORMAL)
-    new_nodes = split_nodes_delimiter([bold_node, bold_node_1, link_node, img_node, bold_node_2], "**", TextType.BOLD)
-    print(new_nodes)
+    text_with_images = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
+    text_with_links = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
+    matches = extract_markdown_images(text_with_images)
+    print(matches)
+    matches = extract_markdown_links(text_with_links)
+    print(matches)
