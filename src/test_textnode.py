@@ -9,7 +9,10 @@ from textnode import (
     extract_markdown_links,
     split_nodes_image,
     split_nodes_link,
-    text_to_textnodes
+    text_to_textnodes,
+    markdown_to_blocks,
+    BlockType,
+    block_to_block_type,
 )
 
 class TestTextNode(unittest.TestCase):
@@ -141,6 +144,66 @@ class TestTextNode(unittest.TestCase):
         ]
         self.assertListEqual(text_to_textnodes(text), expected_result)
 
+    def test_markdown_to_blocks(self):
+        md = """This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+"""
+        expected_result = [
+            "This is **bolded** paragraph",
+            "This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line",
+            "- This is a list\n- with items",
+        ]
+        blocks = markdown_to_blocks(md)
+        self.assertEqual(blocks, expected_result)
+
+    def test_block_to_block_type(self):
+        md = """# Heading 1
+
+This is a paragraph of text. It has some **bold** and _italic_ words inside of it.
+
+- This is the first list item in a list block
+- This is a list item
+- This is another list item
+
+### Heading 3
+
+> This is the first list item in a list block
+> This is a list item
+> This is another list item
+
+######  Heading 6
+
+```
+This is the first list item in a list block
+This is a list item
+This is another list item
+````
+
+#######  Normal text because more than 6 heading
+
+1. This is the first list item in a list block
+2. This is a list item
+3. This is another list item
+"""
+        expected_result = [
+            BlockType.HEADING,
+            BlockType.PARAGRAPH,
+            BlockType.UNORDERED_LIST,
+            BlockType.HEADING,
+            BlockType.QUOTE,
+            BlockType.HEADING,
+            BlockType.CODE,
+            BlockType.PARAGRAPH,
+            BlockType.ORDERED_LIST,
+        ]
+        blocks = markdown_to_blocks(md)
+        block_types = [block_to_block_type(block) for block in blocks]
+        self.assertEqual(block_types, expected_result)
 
 if __name__ == '__main__':
     unittest.main()
