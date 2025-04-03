@@ -25,15 +25,21 @@ class TestLeafNode(unittest.TestCase):
             "href": "https://www.example.com",
             "target": "_blank"
         }
+        img_props = {
+            "src": "https://www.foobar.com/cat.png",
+            "alt": "Foo Bar"
+        }
         p_node = LeafNode("p", "This is a paragraph of text.")
         raw_node = LeafNode(None, "This is a paragraph of text.")
         no_child_node = LeafNode(None, "This is a paragraph of text.", [p_node])
-        link_node = LeafNode(tag="a", value="Click bait!", props=link_props) 
+        link_node = LeafNode(tag="a", value="Click bait!", props=link_props)
+        img_node = LeafNode(tag="img", value='', props=img_props)
 
         self.assertEqual(p_node.to_html(), '<p>This is a paragraph of text.</p>')
         self.assertEqual(raw_node.to_html(), 'This is a paragraph of text.')
         self.assertEqual(no_child_node.children, None)
-        self.assertEqual(link_node.props_to_html(), ' href="https://www.example.com" target="_blank"')
+        self.assertEqual(link_node.to_html(), '<a href="https://www.example.com" target="_blank">Click bait!</a>')
+        self.assertEqual(img_node.to_html(), '<img src="https://www.foobar.com/cat.png" alt="Foo Bar">')
 
 class TestParentNode(unittest.TestCase):
     def test_parent(self):
