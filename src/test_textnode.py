@@ -13,6 +13,7 @@ from textnode import (
     markdown_to_blocks,
     BlockType,
     block_to_block_type,
+    markdown_to_html_node,
 )
 
 class TestTextNode(unittest.TestCase):
@@ -66,8 +67,8 @@ class TestTextNode(unittest.TestCase):
 
         text_double_bold = TextNode("**Warning**: This action **cannot** be undone!", TextType.NORMAL)
         double_split = split_nodes_delimiter([text_double_bold], "**", TextType.BOLD)
-        self.assertEqual(double_split[1].text, "Warning")
-        self.assertEqual(double_split[3].text, "cannot")
+        self.assertEqual(double_split[0].text, "Warning")
+        self.assertEqual(double_split[2].text, "cannot")
 
     def test_extract_markdown_images(self):
         text_with_images = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
@@ -182,7 +183,7 @@ This is a paragraph of text. It has some **bold** and _italic_ words inside of i
 This is the first list item in a list block
 This is a list item
 This is another list item
-````
+```
 
 #######  Normal text because more than 6 heading
 
@@ -204,6 +205,11 @@ This is another list item
         blocks = markdown_to_blocks(md)
         block_types = [block_to_block_type(block) for block in blocks]
         self.assertEqual(block_types, expected_result)
+
+    def test_markdown_to_html(self):
+        markdown = """\n# Heading 1\n\n## Heading 2\n\n### Heading 3\n\n#### Heading 4\n\n##### Heading 5\n\n###### Heading 6\n\n####### Not a heading 7\n\nParagraph with **bold** and _italic_ and [a link](https://example.com) and [an image](https://example.com/asd/cat.jpg).\nThat also has a right **edge bold**\n`git commit -m "Yeah"` to commit.\n\n- An unordered list.\n- **This** is a _list item_\n- This [cat](https://example.com) rocks\n\n> Do or do not. \n> There is no try.\n\n```\ndef say_hello():\n    print("Hello world!")\n    \nsay_hello()\n```\n\n1. An ordered list.\n2. **This** is a _list item_\n3. This [cat](https://example.com) rocks\n"""
+        expected_result = """<html><body><h1>Heading 1</h1><h2>Heading 2</h2><h3>Heading 3</h3><h4>Heading 4</h4><h5>Heading 5</h5><h6>Heading 6</h6><p>####### Not a heading 7</p><div><p>Paragraph with <b>bold</b> and <i>italic</i> and <a href="https://example.com">a link</a> and <a href="https://example.com/asd/cat.jpg">an image</a>.</p><p>That also has a right <b>edge bold</b></p><p><code>git commit -m "Yeah"</code> to commit.</p></div><ul><li>An unordered list.</li><li><b>This</b> is a <i>list item</i></li><li>This <a href="https://example.com">cat</a> rocks</li></ul><blockquote>Do or do not.  There is no try.</blockquote><pre><code>def say_hello():\n    print("Hello world!")\n    \nsay_hello()</code></pre><ol><li> An ordered list.</li><li> <b>This</b> is a <i>list item</i></li><li> This <a href="https://example.com">cat</a> rocks</li></ol></body></html>"""
+        self.assertEqual(markdown_to_html_node(markdown), expected_result)
 
 if __name__ == '__main__':
     unittest.main()
