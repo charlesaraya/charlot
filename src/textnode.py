@@ -1,7 +1,8 @@
+from functools import reduce
 from enum import Enum
 import re
 
-from htmlnode import LeafNode
+from htmlnode import LeafNode, ParentNode
 
 class TextType(Enum):
     NORMAL = "normal"
@@ -10,6 +11,15 @@ class TextType(Enum):
     CODE = "code"
     LINK = "link"
     IMAGE = "image"
+
+
+class BlockType(Enum):
+    PARAGRAPH = "paragraph"
+    HEADING = "heading"
+    CODE = "code"
+    QUOTE = "quote"
+    UNORDERED_LIST = "unordered_list"
+    ORDERED_LIST = "ordered_list"
 
 
 class TextNode:
@@ -55,15 +65,27 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
             new_nodes.append(node)
         else:
             text_split = node.text.split(delimiter)
-            if len(text_split) in [1, 2]:
+            if len(text_split) == 1:
                 new_nodes.append(node)
                 continue
             for idx, text in enumerate(text_split):
+                if not text:
+                    continue
                 if (idx+1) % 2 != 0:
                     new_nodes.append(TextNode(text, TextType.NORMAL))
                 else:
                     new_nodes.append(TextNode(text, text_type))
     return new_nodes
+
+URL_PATTERN = r"\[(\w+(?:\s*\w*)*)\]\((http(?:s)?:\/\/(?:[\w]+\.)*[\S]+\.\w+(?:[A-Za-z0-9-\._~!\$&'\*\+,;=:@\/\?])*)\)"
+
+def extract_markdown_images(text):
+    matches = re.findall(r"!"+URL_PATTERN, text)
+    return matches
+
+def extract_markdown_links(text):
+    matches = re.findall(URL_PATTERN, text)
+    return matches
 
 def split_nodes_image(old_nodes):
     new_nodes =[]
@@ -119,17 +141,144 @@ def text_to_textnodes(text):
     new_nodes = split_nodes_link(new_nodes)
     return new_nodes
 
-URL_PATTERN = r"\[(\w+(?:\s*\w*)*)\]\((http(?:s)?:\/\/(?:[\w]+\.)*[\S]+\.\w+(?:[A-Za-z0-9-\._~!\$&'\*\+,;=:@\/\?])*)\)"
+def markdown_to_blocks(markdown):
+    markdown_blocks = markdown.split('\n\n')
+    return list(map(lambda x: x.strip(), markdown_blocks))
 
-def extract_markdown_images(text):
-    matches = re.findall(r"!"+URL_PATTERN, text)
-    return matches
+def block_to_block_type(block):
+    # Check Heading
+    for i in range(1, 7):
+        if block.startswith(f"{'#'*i} "):
+            return BlockType.HEADING
+    # Check Code
+    lines = block.split('\n')
+    if lines[0] == '```' and lines[-1] == '```':
+        return BlockType.CODE
+    # Check Quote, then Unordered list
+    list_types = [('>', BlockType.QUOTE), ('-', BlockType.UNORDERED_LIST)]
+    for list_type, block_type in list_types:
+        if len(lines) == sum(list(map(lambda x: x.startswith(f"{list_type} "), lines))):
+            return block_type
+    # Check Ordered List, otherwise is Paragraph
+    for idx, line in enumerate(lines):
+        if not line.startswith(f"{idx+1}. "):
+            return BlockType.PARAGRAPH
+    return BlockType.ORDERED_LIST
 
-def extract_markdown_links(text):
-    matches = re.findall(URL_PATTERN, text)
-    return matches
+def markdown_to_html_node(markdown):
+    blocks = markdown_to_blocks(markdown)
+    super_html_node = []
+    for block in blocks:
+        block_type = block_to_block_type(block)
+        match block_type:
+            case BlockType.PARAGRAPH:
+                lines = block.split('\n')
+                lines_of_text_nodes = list(map(text_to_textnodes, lines))
+                html_p = generate_leafnodes_list(lines_of_text_nodes)
+                html_p = list(map(lambda x: ParentNode('p', children=x), html_p))
+                if len(html_p) > 1:
+                    super_html_node.append(ParentNode('div', children=html_p))
+                else:
+                    super_html_node.append(html_p[0])
+            case BlockType.HEADING:
+                HEADING_PATTERN = r"^(#{1,6} )((?:\s*\w*)+)"
+                matches = re.findall(HEADING_PATTERN, block)
+                hastags, text = matches[0]
+                num_hashtags = len(hastags) - 1 # w/o space
+                html_h = LeafNode(f"h{num_hashtags}", text)
+                super_html_node.append(html_h)
+            case BlockType.CODE:
+                lines = block.split('\n')
+                text_lines = '\n'.join(lines[1:-1])
+                """ lines_of_text_nodes = list(map(text_to_textnodes, [text_lines]))
+                html_p = generate_leafnodes_list([TextNode(text_lines, TextType)]) """
+                #super_html_node.append(ParentNode('pre', children=[ParentNode('code', children=html_p[0])]))
+                super_html_node.append(ParentNode('pre', children=[ParentNode('code', children=[LeafNode(None, text_lines)])]))
+            case BlockType.ORDERED_LIST | BlockType.UNORDERED_LIST:
+                lines = block.split('\n')
+                text_lines = list(map(lambda x: x[2:], lines))
+                lines_of_text_nodes = list(map(text_to_textnodes, text_lines))
+                html_p = generate_leafnodes_list(lines_of_text_nodes)
+                html_p = list(map(lambda x: ParentNode('li', children=x), html_p))
+                if block_type == BlockType.UNORDERED_LIST:
+                    super_html_node.append(ParentNode('ul', children=html_p))
+                else:
+                    super_html_node.append(ParentNode('ol', children=html_p))
+            case BlockType.QUOTE:
+                lines = block.split('\n')
+                text_lines = list(map(lambda x: x[2:], lines))
+                quoted_text = reduce(lambda x, y: f"{x} {y}", text_lines, '').strip()
+                lines_of_text_nodes = list(map(text_to_textnodes, [quoted_text]))
+                html_p = generate_leafnodes_list(lines_of_text_nodes)
+                super_html_node.append(ParentNode('blockquote', children=html_p[0]))
+            case _:
+                raise Exception(f"Markdown block type {block_type} not supported.")
+    full_html = ParentNode('html', children=[ParentNode('body', children=super_html_node)])
+    return full_html.to_html()
+
+def inline_text_to_leaf(text_node):
+    match text_node.text_type:
+        case TextType.NORMAL:
+            html_node = LeafNode(tag='', value=text_node.text)
+        case TextType.BOLD:
+            html_node = LeafNode('b', text_node.text)
+        case TextType.ITALIC:
+            html_node = LeafNode('i', text_node.text)
+        case TextType.CODE:
+            html_node = LeafNode('code', text_node.text)
+        case TextType.LINK:
+            html_node = LeafNode('a', text_node.text, {"href": text_node.url})
+        case TextType.IMAGE:
+            html_node = LeafNode('img', text_node.text, props={"src": text_node.url, "alt": text_node.text})
+    return html_node
+
+def generate_leafnodes_list(lines_of_text_nodes):
+    leaf_nodes_list = []
+    for text_nodes in lines_of_text_nodes:
+        leaf_nodes = list(map(inline_text_to_leaf, text_nodes))
+        leaf_nodes_list.append(leaf_nodes)
+    return leaf_nodes_list
+
+def print_html_node(html_node):
+    return
 
 if __name__ == '__main__':
-    text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and **specially** a [link](https://boot.dev). Clear!"
-    new_nodes = text_to_textnodes(text)
-    print(new_nodes)
+    markdown = """
+# Heading 1
+
+## Heading 2
+
+### Heading 3
+
+#### Heading 4
+
+##### Heading 5
+
+###### Heading 6
+
+####### Not a heading 7
+
+Paragraph with **bold** and _italic_ and [a link](https://example.com) and [an image](https://example.com/asd/cat.jpg).
+That also has a right **edge bold**
+`git commit -m "Yeah"` to commit.
+
+- An unordered list.
+- **This** is a _list item_
+- This [cat](https://example.com) rocks
+
+> Do or do not. 
+> There is no try.
+
+```
+def say_hello():
+    print("Hello world!")
+    
+say_hello()
+```
+
+1. An ordered list.
+2. **This** is a _list item_
+3. This [cat](https://example.com) rocks
+"""
+    html_nodes = markdown_to_html_node(markdown)
+    print(html_nodes)
