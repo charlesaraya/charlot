@@ -242,43 +242,18 @@ def generate_leafnodes_list(lines_of_text_nodes):
 def print_html_node(html_node):
     return
 
+def extract_title(markdown):
+    H1_PREFIX = '# '
+    md_blocks = markdown_to_blocks(markdown)
+    heading_md = list(filter(lambda x: x.startswith(H1_PREFIX), md_blocks))
+    if heading_md:
+        return heading_md[0].split(H1_PREFIX)[1]
+    else:
+        raise ValueError("No h1 markdown syntax found. Should start with '# '.", 1)
+
 if __name__ == '__main__':
-    markdown = """
-# Heading 1
+    md = """# Heading 1
 
-## Heading 2
-
-### Heading 3
-
-#### Heading 4
-
-##### Heading 5
-
-###### Heading 6
-
-####### Not a heading 7
-
-Paragraph with **bold** and _italic_ and [a link](https://example.com) and [an image](https://example.com/asd/cat.jpg).
-That also has a right **edge bold**
-`git commit -m "Yeah"` to commit.
-
-- An unordered list.
-- **This** is a _list item_
-- This [cat](https://example.com) rocks
-
-> Do or do not. 
-> There is no try.
-
-```
-def say_hello():
-    print("Hello world!")
-    
-say_hello()
-```
-
-1. An ordered list.
-2. **This** is a _list item_
-3. This [cat](https://example.com) rocks
+This is a paragraph of text. It has some **bold** and _italic_ words inside of it.
 """
-    html_nodes = markdown_to_html_node(markdown)
-    print(html_nodes)
+    print(extract_title(md))
