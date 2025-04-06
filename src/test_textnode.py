@@ -78,10 +78,36 @@ class TestTextNode(unittest.TestCase):
         self.assertListEqual(matches, expected_result)
 
     def test_extract_markdown_links(self):
-        text_with_links = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
+        bad_links = [
+            "[link](asd)",
+            "[link](http::)",
+            "[link](http::)",
+            "[link](http: //example.com)",
+            "[link](http://example)",
+        ]
+        expected_result = [[]]*len(bad_links)
+        result = list(map(extract_markdown_links, bad_links))
+        self.assertListEqual(result, expected_result)
+
+        good_links = [
+            ("[link](http://google.com)", ("link", "http://google.com")),
+            ("[link](http://google.com)", ("link", "http://google.com")),
+            ("[a link](http://google.com)", ("a link", "http://google.com")),
+            ("[link](http://www.google.com)", ("link", "http://www.google.com")),
+            ("[link](http://www.google.com/)", ("link", "http://www.google.com/")),
+            ("[link](http://www.google.com/asd)", ("link", "http://www.google.com/asd")),
+            ("[link](http://www.google.com/a-sd/)", ("link", "http://www.google.com/a-sd/")),
+            ("[link](http://www.google.com/asd/cat.jpeg)", ("link", "http://www.google.com/asd/cat.jpeg")),
+            ("[link](http://www.google.com/asd/@cat.jpeg)", ("link", "http://www.google.com/asd/@cat.jpeg")),
+        ]
+        links = [link[0] for link in good_links]
+        expected_result = [[link[1]] for link in good_links]
+        result = list(map(extract_markdown_links, [link[0] for link in good_links]))
+        self.assertListEqual(result, expected_result)
+
+        multiple_links = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
         expected_result = [('to boot dev', 'https://www.boot.dev'), ('to youtube', 'https://www.youtube.com/@bootdotdev')]
-        matches = extract_markdown_links(text_with_links)
-        self.assertListEqual(matches, expected_result)
+        self.assertListEqual(extract_markdown_links(multiple_links), expected_result)
 
     def test_split_nodes_image(self):
         self.assertEqual(split_nodes_link([TestTextNode.empty_node]), [TestTextNode.empty_node])

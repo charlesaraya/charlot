@@ -77,7 +77,7 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     new_nodes.append(TextNode(text, text_type))
     return new_nodes
 
-URL_PATTERN = r"\[(\w+(?:\s*\w*)*)\]\((http(?:s)?:\/\/(?:[\w]+\.)*[\S]+\.\w+(?:[A-Za-z0-9-\._~!\$&'\*\+,;=:@\/\?])*)\)"
+URL_PATTERN = r"\[([\w\s]+)\]\((http[s]?:\/\/(?:[\w\-]+\.)+[\w-]+(?:\/[\S]*)*(?:\.\w+)?)\)"
 
 def extract_markdown_images(text):
     matches = re.findall(r"!"+URL_PATTERN, text)
@@ -252,8 +252,6 @@ def extract_title(markdown):
         raise ValueError("No h1 markdown syntax found. Should start with '# '.", 1)
 
 if __name__ == '__main__':
-    md = """# Heading 1
-
-This is a paragraph of text. It has some **bold** and _italic_ words inside of it.
-"""
-    print(extract_title(md))
+    link = "2023-10-27-functional-python.md"
+    text = text = "**[Exploring the Depths of Functional Programming in Python](http://2023-10-27-functional-python.md/sdf/sdf.md)**:  A dive into Python's functional capabilities, beyond the usual list comprehensions. We'll explore `map`, `filter`, `reduce`, and more!"
+    print(text_to_textnodes(text))
