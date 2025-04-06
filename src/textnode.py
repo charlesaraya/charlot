@@ -129,17 +129,19 @@ def split_nodes_link(old_nodes):
 
 def text_to_textnodes(text):
     initial_node = TextNode(text, TextType.NORMAL)
+    nodes = [initial_node]
+
+    nodes = split_nodes_image(nodes)
+    nodes = split_nodes_link(nodes)
+
     delimiters_types = [("**", TextType.BOLD), ("_", TextType.ITALIC), ("`", TextType.CODE)]
-    old_nodes = [initial_node]
     for delimiter, text_type in delimiters_types:
         try:
-            old_nodes = split_nodes_delimiter(old_nodes, delimiter, text_type)
+            nodes = split_nodes_delimiter(nodes, delimiter, text_type)
         except ValueError as e:
             print(f"Error {e}")
             continue
-    new_nodes = split_nodes_image(old_nodes)
-    new_nodes = split_nodes_link(new_nodes)
-    return new_nodes
+    return nodes
 
 def markdown_to_blocks(markdown):
     markdown_blocks = markdown.split('\n\n')
