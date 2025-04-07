@@ -23,6 +23,8 @@ def generate_page(from_path, template_path, dest_path, basepath):
     placeholders = [
         ('{{ Title }}', title),
         ('{{ Content }}', content),
+        ('href="/', f'href="{basepath}'),
+        ('src="/', f'src="{basepath}'),
     ]
     with open(template_path, 'r') as template_file:
         generated_file = template_file.read()

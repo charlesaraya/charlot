@@ -31,9 +31,6 @@ def copy_dir(orig_path, dest_dir):
             copy_dir(orig_filepath, dest_filepath)
 
 def copy_static(from_dir, to_dir):
-    cwd = os.getcwd()
-    from_dir = os.path.join(cwd, from_dir)
-    to_dir = os.path.join(cwd, to_dir)
     if not os.path.isdir(from_dir):
         raise ValueError(f"Target directory {from_dir} does not exist.")
     if os.path.isdir(to_dir):
