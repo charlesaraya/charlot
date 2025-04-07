@@ -31,7 +31,7 @@ Charlot is a lightweight, fast, and SEO-friendly static site generator built fro
 ├── template.html
 ├── src/
 │   ├── source_code.py      # Source code
-│   ├── test_source_code.py # Source code
+│   ├── test_source_code.py # Test source code
 │   └── main.py             # Main generator script
 │
 ├── LICENSE
