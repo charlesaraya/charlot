@@ -84,6 +84,7 @@ class TestTextNode(unittest.TestCase):
             "[link](http::)",
             "[link](http: //example.com)",
             "[link](http://example)",
+            "[li]nk](http://example)",
         ]
         expected_result = [[]]*len(bad_links)
         result = list(map(extract_markdown_links, bad_links))
@@ -93,6 +94,9 @@ class TestTextNode(unittest.TestCase):
             ("[link](http://google.com)", ("link", "http://google.com")),
             ("[link](http://google.com)", ("link", "http://google.com")),
             ("[a link](http://google.com)", ("a link", "http://google.com")),
+            ("[google.com](http://google.com)", ("google.com", "http://google.com")),
+            ("[A 'fancy' link](http://google.com)", ("A 'fancy' link", "http://google.com")),
+            ("[rel link](/google.com)", ("rel link", "/google.com")),
             ("[link](http://www.google.com)", ("link", "http://www.google.com")),
             ("[link](http://www.google.com/)", ("link", "http://www.google.com/")),
             ("[link](http://www.google.com/asd)", ("link", "http://www.google.com/asd")),
@@ -233,9 +237,13 @@ This is another list item
         block_types = [block_to_block_type(block) for block in blocks]
         self.assertEqual(block_types, expected_result)
 
-    def test_markdown_to_html(self):
+    def test_markdown_to_html_node(self):
         markdown = """\n# Heading 1\n\n## Heading 2\n\n### Heading 3\n\n#### Heading 4\n\n##### Heading 5\n\n###### Heading 6\n\n####### Not a heading 7\n\nParagraph with **bold** and _italic_ and [a link](https://example.com) and [an image](https://example.com/asd/cat.jpg).\nThat also has a right **edge bold**\n`git commit -m "Yeah"` to commit.\n\n- An unordered list.\n- **This** is a _list item_\n- This [cat](https://example.com) rocks\n\n> Do or do not. \n> There is no try.\n\n```\ndef say_hello():\n    print("Hello world!")\n    \nsay_hello()\n```\n\n1. An ordered list.\n2. **This** is a _list item_\n3. This [cat](https://example.com) rocks\n"""
-        expected_result = """<html><body><h1>Heading 1</h1><h2>Heading 2</h2><h3>Heading 3</h3><h4>Heading 4</h4><h5>Heading 5</h5><h6>Heading 6</h6><p>####### Not a heading 7</p><div><p>Paragraph with <b>bold</b> and <i>italic</i> and <a href="https://example.com">a link</a> and <a href="https://example.com/asd/cat.jpg">an image</a>.</p><p>That also has a right <b>edge bold</b></p><p><code>git commit -m "Yeah"</code> to commit.</p></div><ul><li>An unordered list.</li><li><b>This</b> is a <i>list item</i></li><li>This <a href="https://example.com">cat</a> rocks</li></ul><blockquote>Do or do not.  There is no try.</blockquote><pre><code>def say_hello():\n    print("Hello world!")\n    \nsay_hello()</code></pre><ol><li> An ordered list.</li><li> <b>This</b> is a <i>list item</i></li><li> This <a href="https://example.com">cat</a> rocks</li></ol></body></html>"""
+        expected_result = """<div><h1>Heading 1</h1><h2>Heading 2</h2><h3>Heading 3</h3><h4>Heading 4</h4><h5>Heading 5</h5><h6>Heading 6</h6><p>####### Not a heading 7</p><div><p>Paragraph with <b>bold</b> and <i>italic</i> and <a href="https://example.com">a link</a> and <a href="https://example.com/asd/cat.jpg">an image</a>.</p><p>That also has a right <b>edge bold</b></p><p><code>git commit -m "Yeah"</code> to commit.</p></div><ul><li>An unordered list.</li><li><b>This</b> is a <i>list item</i></li><li>This <a href="https://example.com">cat</a> rocks</li></ul><blockquote>Do or do not.  There is no try.</blockquote><pre><code>def say_hello():\n    print("Hello world!")\n    \nsay_hello()</code></pre><ol><li>An ordered list.</li><li><b>This</b> is a <i>list item</i></li><li>This <a href="https://example.com">cat</a> rocks</li></ol></div>"""
+        self.assertEqual(markdown_to_html_node(markdown), expected_result)
+
+        markdown = """1. Gandalf\n2. Bilbo\n3. Sam\n4. Glorfindel\n5. Galadriel\n6. Elrond\n7. Thorin\n8. Sauron\n9. Aragorn"""
+        expected_result = """<div><ol><li>Gandalf</li><li>Bilbo</li><li>Sam</li><li>Glorfindel</li><li>Galadriel</li><li>Elrond</li><li>Thorin</li><li>Sauron</li><li>Aragorn</li></ol></div>"""
         self.assertEqual(markdown_to_html_node(markdown), expected_result)
 
     def test_extract_title(self):

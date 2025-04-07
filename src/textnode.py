@@ -77,7 +77,7 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     new_nodes.append(TextNode(text, text_type))
     return new_nodes
 
-URL_PATTERN = r"\[([\w\s]+)\]\((http[s]?:\/\/(?:[\w\-]+\.)+[\w-]+(?:\/[\S]*)*(?:\.\w+)?)\)"
+URL_PATTERN = r"\[([^\]]+)\]\(((?:http[s]?:\/\/(?:[\w\-]+\.)+[\w-]+)?(?:\/[\S]*)*(?:\.\w+)?)\)"
 
 def extract_markdown_images(text):
     matches = re.findall(r"!"+URL_PATTERN, text)
@@ -197,8 +197,9 @@ def markdown_to_html_node(markdown):
                 #super_html_node.append(ParentNode('pre', children=[ParentNode('code', children=html_p[0])]))
                 super_html_node.append(ParentNode('pre', children=[ParentNode('code', children=[LeafNode(None, text_lines)])]))
             case BlockType.ORDERED_LIST | BlockType.UNORDERED_LIST:
+                offset = 2 if block_type == BlockType.UNORDERED_LIST else 3
                 lines = block.split('\n')
-                text_lines = list(map(lambda x: x[2:], lines))
+                text_lines = list(map(lambda x: x[offset:], lines))
                 lines_of_text_nodes = list(map(text_to_textnodes, text_lines))
                 html_p = generate_leafnodes_list(lines_of_text_nodes)
                 html_p = list(map(lambda x: ParentNode('li', children=x), html_p))
@@ -215,7 +216,7 @@ def markdown_to_html_node(markdown):
                 super_html_node.append(ParentNode('blockquote', children=html_p[0]))
             case _:
                 raise Exception(f"Markdown block type {block_type} not supported.")
-    full_html = ParentNode('html', children=[ParentNode('body', children=super_html_node)])
+    full_html = ParentNode('div', children=super_html_node)
     return full_html.to_html()
 
 def inline_text_to_leaf(text_node):
