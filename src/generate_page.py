@@ -11,7 +11,7 @@ def create_dir_path(path):
                 os.mkdir(new_dir)
             new_dir += '/'
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
 
     with open(from_path, 'r') as from_file:
@@ -25,12 +25,9 @@ def generate_page(from_path, template_path, dest_path):
         ('{{ Content }}', content),
     ]
     with open(template_path, 'r') as template_file:
-            generated_file = ''
-            for line in template_file:
-                generated_line = line
-                for placeholder in placeholders:
-                    generated_line = generated_line.replace(placeholder[0], placeholder[1])
-                generated_file += generated_line
+        generated_file = template_file.read()
+        for placeholder in placeholders:
+            generated_file = generated_file.replace(placeholder[0], placeholder[1])
 
     dir_path = os.path.dirname(dest_path)
     dest_path = dest_path[1:] if dest_path.startswith('/') else dest_path # default to relative paths
@@ -42,7 +39,7 @@ def generate_page(from_path, template_path, dest_path):
     with open(dest_path, mode) as dest_file:
          dest_file.write(generated_file)
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
     if os.path.isdir(dir_path_content):
         if (files := os.listdir(dir_path_content)):
             for file in files:
@@ -50,6 +47,6 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
                 dest_filepath = os.path.join(dest_dir_path, file)
                 if os.path.isfile(filepath):
                     dest_filepath, _ = os.path.splitext(dest_filepath)
-                    generate_page(filepath, template_path, dest_filepath + '.html')
+                    generate_page(filepath, template_path, dest_filepath + '.html', basepath)
                 elif os.path.isdir(filepath):
-                    generate_pages_recursive(filepath, template_path, dest_filepath)
+                    generate_pages_recursive(filepath, template_path, dest_filepath, basepath)
