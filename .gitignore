@@ -1,6 +1,5 @@
 __pycache__/
-main.sh
-test.sh
+*.sh
 content
 test
 .vscode
