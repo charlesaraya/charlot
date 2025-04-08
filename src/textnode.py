@@ -4,6 +4,11 @@ import re
 
 from htmlnode import LeafNode, ParentNode
 
+
+LINK_REGEX = r"\[([^\]]+)\]\(((?:http[s]?:\/\/(?:[\w\-]+\.)+[\w-]+)?(?:\/[\S]*)*(?:\.\w+)?)\)"
+HEADING_REGEX = r"^(#{1,6} )((?:\s*\w*)+)"
+HR_REGEX = r"(^\*\*{1,}\*$)|(^--{1,}-$)|(^__{1,}_$)"
+
 class TextType(Enum):
     NORMAL = "normal"
     ITALIC = "italic"
@@ -78,14 +83,12 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     new_nodes.append(TextNode(text, text_type))
     return new_nodes
 
-URL_PATTERN = r"\[([^\]]+)\]\(((?:http[s]?:\/\/(?:[\w\-]+\.)+[\w-]+)?(?:\/[\S]*)*(?:\.\w+)?)\)"
-
 def extract_markdown_images(text):
-    matches = re.findall(r"!"+URL_PATTERN, text)
+    matches = re.findall(r"!"+LINK_REGEX, text)
     return matches
 
 def extract_markdown_links(text):
-    matches = re.findall(URL_PATTERN, text)
+    matches = re.findall(LINK_REGEX, text)
     return matches
 
 def split_nodes_image(old_nodes):
@@ -150,9 +153,9 @@ def markdown_to_blocks(markdown):
 
 def block_to_block_type(block):
     # Headings
-    for i in range(1, 7):
-        if block.startswith(f"{'#'*i} "):
-            return BlockType.HEADING
+    matches = re.findall(HEADING_REGEX, block)
+    if matches:
+        return BlockType.HEADING
 
     # Code Block
     lines = block.split('\n')
@@ -166,7 +169,6 @@ def block_to_block_type(block):
             return block_type
 
     # Horizontal Rule
-    HR_REGEX = r"(^\*\*{1,}\*$)|(^--{1,}-$)|(^__{1,}_$)"
     match = re.match(HR_REGEX, block)
     if match:
         return BlockType.HORIZONTAL_RULE
@@ -193,8 +195,7 @@ def markdown_to_html_node(markdown):
                 else:
                     super_html_node.append(html_p[0])
             case BlockType.HEADING:
-                HEADING_PATTERN = r"^(#{1,6} )((?:\s*\w*)+)"
-                matches = re.findall(HEADING_PATTERN, block)
+                matches = re.findall(HEADING_REGEX, block)
                 hastags, text = matches[0]
                 num_hashtags = len(hastags) - 1 # w/o space
                 html_h = LeafNode(f"h{num_hashtags}", text)
