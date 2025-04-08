@@ -149,25 +149,29 @@ def markdown_to_blocks(markdown):
     return list(map(lambda x: x.strip(), markdown_blocks))
 
 def block_to_block_type(block):
-    # Check Heading
+    # Headings
     for i in range(1, 7):
         if block.startswith(f"{'#'*i} "):
             return BlockType.HEADING
-    # Check Code
+
+    # Code Block
     lines = block.split('\n')
     if lines[0] == '```' and lines[-1] == '```':
         return BlockType.CODE
-    # Check Quote, then Unordered list
+
+    # Quote Block, then Unordered list
     list_types = [('>', BlockType.QUOTE), ('-', BlockType.UNORDERED_LIST)]
     for list_type, block_type in list_types:
         if len(lines) == sum(list(map(lambda x: x.startswith(f"{list_type} "), lines))):
             return block_type
+
     # Horizontal Rule
     HR_REGEX = r"(^\*\*{1,}\*$)|(^--{1,}-$)|(^__{1,}_$)"
     match = re.match(HR_REGEX, block)
     if match:
         return BlockType.HORIZONTAL_RULE
-    # Check Ordered List, otherwise is Paragraph
+
+    # Ordered List, otherwise is Paragraph
     for idx, line in enumerate(lines):
         if not line.startswith(f"{idx+1}. "):
             return BlockType.PARAGRAPH
@@ -247,9 +251,6 @@ def generate_leafnodes_list(lines_of_text_nodes):
         leaf_nodes = list(map(inline_text_to_leaf, text_nodes))
         leaf_nodes_list.append(leaf_nodes)
     return leaf_nodes_list
-
-def print_html_node(html_node):
-    return
 
 def extract_title(markdown):
     H1_PREFIX = '# '
