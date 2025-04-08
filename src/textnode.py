@@ -20,6 +20,7 @@ class BlockType(Enum):
     QUOTE = "quote"
     UNORDERED_LIST = "unordered_list"
     ORDERED_LIST = "ordered_list"
+    HORIZONTAL_RULE = "horizontal_rule"
 
 
 class TextNode:
@@ -161,6 +162,11 @@ def block_to_block_type(block):
     for list_type, block_type in list_types:
         if len(lines) == sum(list(map(lambda x: x.startswith(f"{list_type} "), lines))):
             return block_type
+    # Horizontal Rule
+    HR_REGEX = r"(^\*\*{1,}\*$)|(^--{1,}-$)|(^__{1,}_$)"
+    match = re.match(HR_REGEX, block)
+    if match:
+        return BlockType.HORIZONTAL_RULE
     # Check Ordered List, otherwise is Paragraph
     for idx, line in enumerate(lines):
         if not line.startswith(f"{idx+1}. "):
@@ -192,9 +198,6 @@ def markdown_to_html_node(markdown):
             case BlockType.CODE:
                 lines = block.split('\n')
                 text_lines = '\n'.join(lines[1:-1])
-                """ lines_of_text_nodes = list(map(text_to_textnodes, [text_lines]))
-                html_p = generate_leafnodes_list([TextNode(text_lines, TextType)]) """
-                #super_html_node.append(ParentNode('pre', children=[ParentNode('code', children=html_p[0])]))
                 super_html_node.append(ParentNode('pre', children=[ParentNode('code', children=[LeafNode(None, text_lines)])]))
             case BlockType.ORDERED_LIST | BlockType.UNORDERED_LIST:
                 offset = 2 if block_type == BlockType.UNORDERED_LIST else 3
@@ -214,6 +217,9 @@ def markdown_to_html_node(markdown):
                 lines_of_text_nodes = list(map(text_to_textnodes, [quoted_text]))
                 html_p = generate_leafnodes_list(lines_of_text_nodes)
                 super_html_node.append(ParentNode('blockquote', children=html_p[0]))
+            case BlockType.HORIZONTAL_RULE:
+                html_node = LeafNode('hr', None)
+                super_html_node.append(html_node)
             case _:
                 raise Exception(f"Markdown block type {block_type} not supported.")
     full_html = ParentNode('div', children=super_html_node)
