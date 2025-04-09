@@ -15,6 +15,10 @@ Charlot is a lightweight, fast, and SEO-friendly static site generator built fro
 - Run the generator.
 - The static site will be generated.
 
+### Example
+
+https://charlesaraya.github.io/charlot/ 
+
 ### Folder Structure
 
 ```
