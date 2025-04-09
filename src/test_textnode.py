@@ -193,6 +193,57 @@ This is the same paragraph on a new line
         blocks = markdown_to_blocks(md)
         self.assertEqual(blocks, expected_result)
 
+    def test_capture_heading(self):
+        good_headings = """# Heading 1
+
+## Heading 2
+
+### Heading 3
+
+####  Heading 4
+
+#####  Heading 5
+
+######  Heading 6
+
+Heading 1
+======
+
+Heading 2
+-----
+
+# Heading 1
+======
+
+# Heading 2
+-----
+
+Heading 1
+======
+
+Heading 2 -
+-----
+"""
+        blocks = markdown_to_blocks(good_headings)
+        expected_result = [BlockType.HEADING] * len(blocks)
+        block_types = [block_to_block_type(block) for block in blocks]
+        self.assertListEqual(block_types, expected_result)
+
+        bad_headings ="""
+
+#######  Normal text because more than 6 heading
+
+Heading 1
+=
+
+Heading 2
+-
+"""
+        blocks = markdown_to_blocks(bad_headings)
+        expected_result = [BlockType.PARAGRAPH] * len(blocks)
+        block_types = [block_to_block_type(block) for block in blocks]
+        self.assertNotEqual(block_types, bad_headings)
+
     def test_block_to_block_type(self):
         md = """# Heading 1
 

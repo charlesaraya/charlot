@@ -7,6 +7,8 @@ from htmlnode import LeafNode, ParentNode
 
 LINK_REGEX = r"\[([^\]]+)\]\(((?:http[s]?:\/\/(?:[\w\-]+\.)+[\w-]+)?(?:\/[\S]*)*(?:\.\w+)?)\)"
 HEADING_REGEX = r"^(#{1,6} )((?:\s*\w*)+)"
+H1_REGEX = r"([^]]+)\n[=]{1,}$"
+H2_REGEX = r"([^]]+)\n[-]{1,}$"
 HR_REGEX = r"(^\*\*{1,}\*$)|(^--{1,}-$)|(^__{1,}_$)"
 
 class TextType(Enum):
@@ -153,8 +155,8 @@ def markdown_to_blocks(markdown):
 
 def block_to_block_type(block):
     # Headings
-    matches = re.findall(HEADING_REGEX, block)
-    if matches:
+    result = capture_heading(block)
+    if result[0]:
         return BlockType.HEADING
 
     # Code Block
@@ -179,6 +181,25 @@ def block_to_block_type(block):
             return BlockType.PARAGRAPH
     return BlockType.ORDERED_LIST
 
+def capture_heading(markdown):
+    text = ''
+    num_hashtags = 0
+    match = re.findall(HEADING_REGEX, markdown)
+    if match:
+        hashtags, text = match[0]
+        num_hashtags = len(hashtags) - 1 # w/o space
+        return text, num_hashtags
+    match = re.findall(H1_REGEX, markdown)
+    if match:
+        text = match[0]
+        num_hashtags = 1
+        return text, num_hashtags
+    match = re.findall(H2_REGEX, markdown)
+    if match:
+        text = match[0]
+        num_hashtags = 2
+    return text, num_hashtags
+
 def markdown_to_html_node(markdown):
     blocks = markdown_to_blocks(markdown)
     super_html_node = []
@@ -195,9 +216,7 @@ def markdown_to_html_node(markdown):
                 else:
                     super_html_node.append(html_p[0])
             case BlockType.HEADING:
-                matches = re.findall(HEADING_REGEX, block)
-                hastags, text = matches[0]
-                num_hashtags = len(hastags) - 1 # w/o space
+                text, num_hashtags = capture_heading(block)
                 html_h = LeafNode(f"h{num_hashtags}", text)
                 super_html_node.append(html_h)
             case BlockType.CODE:
@@ -263,6 +282,16 @@ def extract_title(markdown):
         raise ValueError("No h1 markdown syntax found. Should start with '# '.", 1)
 
 if __name__ == '__main__':
-    link = "2023-10-27-functional-python.md"
-    text = text = "**[Exploring the Depths of Functional Programming in Python](http://2023-10-27-functional-python.md/sdf/sdf.md)**:  A dive into Python's functional capabilities, beyond the usual list comprehensions. We'll explore `map`, `filter`, `reduce`, and more!"
-    print(text_to_textnodes(text))
+    md = """
+Heading level 1
+===============
+
+Markdown applications don’t agree on how to handle a missing space between the number signs (#) 
+and the heading name. For compatibility, always put a space between the number signs and the heading name.
+
+Heading level 2
+---------------
+
+# Heading level 1
+"""
+    print(markdown_to_html_node(md))
