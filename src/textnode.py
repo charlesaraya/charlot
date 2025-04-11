@@ -6,6 +6,7 @@ from htmlnode import LeafNode, ParentNode
 
 
 LINK_REGEX = r"\[([^\]]+)\]\(((?:http[s]?:\/\/(?:[\w\-]+\.)+[\w-]+)?(?:\/[\S]*)*(?:\.\w+)?)\)"
+EMAIL_REGEX = r"<([\w\-.+]+@[\w.]+)>"
 HEADING_REGEX = r"^(#{1,6} )((?:\s*\w*)+)"
 H1_REGEX = r"([^]]+)\n[=]{1,}$"
 H2_REGEX = r"([^]]+)\n[-]{1,}$"
@@ -18,7 +19,7 @@ class TextType(Enum):
     CODE = "code"
     LINK = "link"
     IMAGE = "image"
-
+    EMAIL = "email"
 
 class BlockType(Enum):
     PARAGRAPH = "paragraph"
@@ -58,6 +59,8 @@ def text_node_to_html_node(text_node):
             return LeafNode("a", text_node.text, {"href": text_node.url})
         case TextType.IMAGE:
             return LeafNode("img", "", {"src": text_node.url, "alt": text_node.text})
+        case TextType.EMAIL:
+            return LeafNode("a", "", {"src": text_node.url})
         case _:
             raise Exception(f"Node's text type {text_node.text_type} not supported.")
 
@@ -85,47 +88,33 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     new_nodes.append(TextNode(text, text_type))
     return new_nodes
 
-def extract_markdown_images(text):
+def extract_images(text):
     matches = re.findall(r"!"+LINK_REGEX, text)
-    return matches
+    matches_with_markdown = list(map(lambda x: (x[0], x[1], f"![{x[0]}]({x[1]})"), matches))
+    return matches_with_markdown
 
-def extract_markdown_links(text):
+def extract_links(text):
     matches = re.findall(LINK_REGEX, text)
-    return matches
+    matches_with_markdown = list(map(lambda x: (x[0], x[1], f"[{x[0]}]({x[1]})"), matches))
+    return matches_with_markdown
 
-def split_nodes_image(old_nodes):
+def extract_emails(text):
+    matches = re.findall(EMAIL_REGEX, text)
+    matches_with_delimiter = list(map(lambda x: (x, f"mailto:{x}", f"<{x}>"), matches))
+    return matches_with_delimiter
+
+def split_nodes(old_nodes, extractor, text_type):
     new_nodes =[]
     for node in old_nodes:
-        matches = extract_markdown_images(node.text)
+        matches = extractor(node.text)
         text = node.text
         if matches:
             for match in matches:
-                alt_text, url = match
-                delimiter = f"![{alt_text}]({url})"
+                alt_text, url, delimiter = match
                 text = text.partition(delimiter)
                 if text[0]:
                     new_nodes.append(TextNode(text[0], TextType.NORMAL))
-                new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
-                text = text[2]
-            if text:
-                new_nodes.append(TextNode(text, TextType.NORMAL))
-        else:
-            new_nodes.append(node)
-    return new_nodes
-
-def split_nodes_link(old_nodes):
-    new_nodes =[]
-    for node in old_nodes:
-        matches = extract_markdown_links(node.text)
-        text = node.text
-        if matches:
-            for match in matches:
-                alt_text, url = match
-                delimiter = f"[{alt_text}]({url})"
-                text = text.partition(delimiter)
-                if text[0]:
-                    new_nodes.append(TextNode(text[0], TextType.NORMAL))
-                new_nodes.append(TextNode(alt_text, TextType.LINK, url))
+                new_nodes.append(TextNode(alt_text, text_type, url))
                 text = text[2]
             if text:
                 new_nodes.append(TextNode(text, TextType.NORMAL))
@@ -137,8 +126,9 @@ def text_to_textnodes(text):
     initial_node = TextNode(text, TextType.NORMAL)
     nodes = [initial_node]
 
-    nodes = split_nodes_image(nodes)
-    nodes = split_nodes_link(nodes)
+    nodes = split_nodes(nodes, extract_images, TextType.IMAGE)
+    nodes = split_nodes(nodes, extract_links, TextType.LINK)
+    nodes = split_nodes(nodes, extract_emails, TextType.EMAIL)
 
     delimiters_types = [("**", TextType.BOLD), ("_", TextType.ITALIC), ("`", TextType.CODE)]
     for delimiter, text_type in delimiters_types:
@@ -259,10 +249,12 @@ def inline_text_to_leaf(text_node):
             html_node = LeafNode('i', text_node.text)
         case TextType.CODE:
             html_node = LeafNode('code', text_node.text)
-        case TextType.LINK:
+        case (TextType.LINK | TextType.EMAIL):
             html_node = LeafNode('a', text_node.text, {"href": text_node.url})
         case TextType.IMAGE:
             html_node = LeafNode('img', text_node.text, props={"src": text_node.url, "alt": text_node.text})
+        case _:
+            html_node = LeafNode('', text_node.text)
     return html_node
 
 def generate_leafnodes_list(lines_of_text_nodes):
