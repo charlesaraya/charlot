@@ -5,10 +5,10 @@ from textnode import (
     TextType,
     text_node_to_html_node,
     split_nodes_delimiter,
-    extract_markdown_images,
-    extract_markdown_links,
-    split_nodes_image,
-    split_nodes_link,
+    extract_images,
+    extract_links,
+    extract_emails,
+    split_nodes,
     text_to_textnodes,
     markdown_to_blocks,
     BlockType,
@@ -73,8 +73,8 @@ class TestTextNode(unittest.TestCase):
 
     def test_extract_markdown_images(self):
         text_with_images = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
-        expected_result = [('rick roll', 'https://i.imgur.com/aKaOqIh.gif'), ('obi wan', 'https://i.imgur.com/fJRm4Vk.jpeg')]
-        matches = extract_markdown_images(text_with_images)
+        expected_result = [("rick roll", "https://i.imgur.com/aKaOqIh.gif", "![rick roll](https://i.imgur.com/aKaOqIh.gif)"), ("obi wan", "https://i.imgur.com/fJRm4Vk.jpeg", "![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)")]
+        matches = extract_images(text_with_images)
         self.assertListEqual(matches, expected_result)
 
     def test_extract_markdown_links(self):
@@ -87,35 +87,41 @@ class TestTextNode(unittest.TestCase):
             "[li]nk](http://example)",
         ]
         expected_result = [[]]*len(bad_links)
-        result = list(map(extract_markdown_links, bad_links))
+        result = list(map(extract_links, bad_links))
         self.assertListEqual(result, expected_result)
 
         good_links = [
-            ("[link](http://google.com)", ("link", "http://google.com")),
-            ("[link](http://google.com)", ("link", "http://google.com")),
-            ("[a link](http://google.com)", ("a link", "http://google.com")),
-            ("[google.com](http://google.com)", ("google.com", "http://google.com")),
-            ("[A 'fancy' link](http://google.com)", ("A 'fancy' link", "http://google.com")),
-            ("[rel link](/google.com)", ("rel link", "/google.com")),
-            ("[link](http://www.google.com)", ("link", "http://www.google.com")),
-            ("[link](http://www.google.com/)", ("link", "http://www.google.com/")),
-            ("[link](http://www.google.com/asd)", ("link", "http://www.google.com/asd")),
-            ("[link](http://www.google.com/a-sd/)", ("link", "http://www.google.com/a-sd/")),
-            ("[link](http://www.google.com/asd/cat.jpeg)", ("link", "http://www.google.com/asd/cat.jpeg")),
-            ("[link](http://www.google.com/asd/@cat.jpeg)", ("link", "http://www.google.com/asd/@cat.jpeg")),
+            ("[link](http://google.com)", ("link", "http://google.com", "[link](http://google.com)")),
+            ("[link](http://google.com)", ("link", "http://google.com", "[link](http://google.com)")),
+            ("[a link](http://google.com)", ("a link", "http://google.com", "[a link](http://google.com)")),
+            ("[google.com](http://google.com)", ("google.com", "http://google.com", "[google.com](http://google.com)")),
+            ("[A 'fancy' link](http://google.com)", ("A 'fancy' link", "http://google.com", "[A 'fancy' link](http://google.com)")),
+            ("[rel link](/google.com)", ("rel link", "/google.com", "[rel link](/google.com)")),
+            ("[link](http://www.google.com)", ("link", "http://www.google.com", "[link](http://www.google.com)")),
+            ("[link](http://www.google.com/)", ("link", "http://www.google.com/", "[link](http://www.google.com/)")),
+            ("[link](http://www.google.com/asd)", ("link", "http://www.google.com/asd", "[link](http://www.google.com/asd)")),
+            ("[link](http://www.google.com/a-sd/)", ("link", "http://www.google.com/a-sd/", "[link](http://www.google.com/a-sd/)")),
+            ("[link](http://www.google.com/asd/cat.jpeg)", ("link", "http://www.google.com/asd/cat.jpeg", "[link](http://www.google.com/asd/cat.jpeg)")),
+            ("[link](http://www.google.com/asd/@cat.jpeg)", ("link", "http://www.google.com/asd/@cat.jpeg", "[link](http://www.google.com/asd/@cat.jpeg)")),
         ]
         links = [link[0] for link in good_links]
         expected_result = [[link[1]] for link in good_links]
-        result = list(map(extract_markdown_links, [link[0] for link in good_links]))
+        result = list(map(extract_links, links))
         self.assertListEqual(result, expected_result)
 
         multiple_links = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
-        expected_result = [('to boot dev', 'https://www.boot.dev'), ('to youtube', 'https://www.youtube.com/@bootdotdev')]
-        self.assertListEqual(extract_markdown_links(multiple_links), expected_result)
+        expected_result = [("to boot dev", "https://www.boot.dev", "[to boot dev](https://www.boot.dev)"), ("to youtube", "https://www.youtube.com/@bootdotdev", "[to youtube](https://www.youtube.com/@bootdotdev)")]
+        self.assertListEqual(extract_links(multiple_links), expected_result)
+
+    def test_extract_markdown_emails(self):
+        good_emails = "This is text with a <john.doe@gmail.com> and <foo.bar_baz@companyx.co.uk>."
+        expected_result = [("john.doe@gmail.com", "mailto:john.doe@gmail.com", "<john.doe@gmail.com>"), ("foo.bar_baz@companyx.co.uk", "mailto:foo.bar_baz@companyx.co.uk", "<foo.bar_baz@companyx.co.uk>")]
+        matches = extract_emails(good_emails)
+        self.assertListEqual(matches, expected_result)
 
     def test_split_nodes_image(self):
-        self.assertEqual(split_nodes_link([TestTextNode.empty_node]), [TestTextNode.empty_node])
-        self.assertEqual(split_nodes_link([TestTextNode.normal_node]), [TestTextNode.normal_node])
+        self.assertEqual(split_nodes([TestTextNode.empty_node], extract_images, TextType.IMAGE), [TestTextNode.empty_node])
+        self.assertEqual(split_nodes([TestTextNode.normal_node], extract_images, TextType.IMAGE), [TestTextNode.normal_node])
 
         start_text = TextNode("Check ", TextType.NORMAL)
         image1 = TextNode("rick roll", TextType.IMAGE, "https://i.imgur.com/aKaOqIh.gif")
@@ -125,19 +131,19 @@ class TestTextNode(unittest.TestCase):
 
         between_text_node = TextNode("Check ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg) and enjoy", TextType.NORMAL)
         expected_result = [start_text, image1, mid_text, image2, end_text]
-        self.assertListEqual(split_nodes_image([between_text_node]), expected_result)
+        self.assertListEqual(split_nodes([between_text_node], extract_images, TextType.IMAGE), expected_result)
 
         start_image_node = TextNode("![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg) and enjoy", TextType.NORMAL)
         expected_result = [image1, mid_text, image2, end_text]
-        self.assertListEqual(split_nodes_image([start_image_node]), expected_result)
+        self.assertListEqual(split_nodes([start_image_node], extract_images, TextType.IMAGE), expected_result)
 
         end_image_node = TextNode("Check ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)", TextType.NORMAL)
         expected_result = [start_text, image1, mid_text, image2]
-        self.assertListEqual(split_nodes_image([end_image_node]), expected_result)
+        self.assertListEqual(split_nodes([end_image_node], extract_images, TextType.IMAGE), expected_result)
 
     def test_split_nodes_link(self):
-        self.assertEqual(split_nodes_link([TestTextNode.empty_node]), [TestTextNode.empty_node])
-        self.assertEqual(split_nodes_link([TestTextNode.normal_node]), [TestTextNode.normal_node])
+        self.assertEqual(split_nodes([TestTextNode.empty_node], extract_links, TextType.LINK), [TestTextNode.empty_node])
+        self.assertEqual(split_nodes([TestTextNode.normal_node], extract_links, TextType.LINK), [TestTextNode.normal_node])
 
         start_text = TextNode("This is text with a link ", TextType.NORMAL)
         link1 = TextNode("to boot dev", TextType.LINK, "https://www.boot.dev")
@@ -147,15 +153,27 @@ class TestTextNode(unittest.TestCase):
 
         between_text_node = TextNode("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev), enjoy!", TextType.NORMAL)
         expected_result = [start_text, link1, mid_text, link2, end_text]
-        self.assertListEqual(split_nodes_link([between_text_node]), expected_result)
+        self.assertListEqual(split_nodes([between_text_node], extract_links, TextType.LINK), expected_result)
 
         start_link_node = TextNode("[to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev), enjoy!", TextType.NORMAL)
         expected_result = [link1, mid_text, link2, end_text]
-        self.assertListEqual(split_nodes_link([start_link_node]), expected_result)
+        self.assertListEqual(split_nodes([start_link_node], extract_links, TextType.LINK), expected_result)
 
         end_link_node = TextNode("This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)", TextType.NORMAL)
         expected_result = [start_text, link1, mid_text, link2]
-        self.assertListEqual(split_nodes_link([end_link_node]), expected_result)
+        self.assertListEqual(split_nodes([end_link_node], extract_links, TextType.LINK), expected_result)
+
+    def test_split_nodes_email(self):
+        start_text = TextNode("This is text with a ", TextType.NORMAL)
+        link1 = TextNode("john.doe@gmail.com", TextType.EMAIL, "mailto:john.doe@gmail.com")
+        mid_text = TextNode(" and ", TextType.NORMAL)
+        link2 = TextNode("foo.bar_baz@companyx.co.uk", TextType.EMAIL, "mailto:foo.bar_baz@companyx.co.uk")
+        end_text = TextNode(".", TextType.NORMAL)
+
+        good_emails = TextNode("This is text with a <john.doe@gmail.com> and <foo.bar_baz@companyx.co.uk>.", TextType.NORMAL)
+        expected_result = [start_text, link1, mid_text, link2, end_text]
+        splitted_nodes = split_nodes([good_emails], extract_emails, TextType.EMAIL)
+        self.assertListEqual(splitted_nodes, expected_result)
 
     def test_text_to_textnodes(self):
         text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and **specially** a [link](https://boot.dev). Clear!"
